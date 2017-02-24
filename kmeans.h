@@ -3,5 +3,6 @@
 
 float** input_points(char *,int ,int);
 void kmeans_cpu(float **,float **,int *,int ,int ,int);
+void kmeans_block(float **,float **,int *,int ,int ,int,int);
 float ** initialise_new_clusters(int,int,int);
 #endif
