@@ -1,4 +1,3 @@
- 
 #include<iostream>
 #include<limits.h>
 #include<stdlib.h>
@@ -10,76 +9,23 @@
 #include<fcntl.h>
 #include<unistd.h>
 #include<omp.h>
+#include<assert.h>
+
+#include"kmeans.h"
 
 using namespace std;
 
 int n,c,d;
 
-void kmeans_cpu(float *point,float *cluster,int *member)
-{
-	int change;
-	int i,j,k;
-	float dist,p; 
-	float *newCluster=(float*)(malloc)(sizeof(float)*c*d);
-	int *newClusterSize=(int*)(malloc)(sizeof(int)*c);
-	for(i=0;i<c;i++)
-	{
-		for(j=0;j<d;j++)
-			newCluster[i*d+j]=0;
-		newClusterSize[i]=0;
-	}	
-	do
-	{
-		change=0;
-		for(i=0;i<n;i++)
-		{
-			float min_dist=INT_MAX;
-			int pos=0;
-			for(j=0;j<c;j++)
-			{
-				dist=0;
-				for(k=0;k<d;k++)
-				{
-					p=(point[i*d+k]-cluster[j*d+k]);
-					dist=dist+p*p;
-				}
-				if(dist<min_dist)
-				{
-					min_dist=dist;
-					pos=j;
-				}
-			}
-			if(member[i]!=pos){
-				member[i]=pos;
-				change=change+1;
-			}
-			newClusterSize[pos]++;
-			for(k=0;k<d;k++)
-			{
-				newCluster[pos*d+k]+=point[i*d+k];
-			}
-		}
-		for(i=0;i<c;i++)
-		{
-			for(k=0;k<d;k++)
-			{
-				if(newClusterSize[i]>0)
-				cluster[i*d+k]=newCluster[i*d+k]/newClusterSize[i];
-				newCluster[i*d+k]=0;
-			}
-			newClusterSize[i]=0;
-		}
-	}while(change >0);
-}
 
 
-void print_clusters(float * cluster)
+void print_clusters(float ** cluster)
 {
 	int i,j;
 	for(i=0;i<c;i++)
 	{
 		for(j=0;j<d;j++)
-			printf("%f ",cluster[i*d+j]);
+			printf("%f ",cluster[j][i]);
 		printf("\n");
 	}	
 
@@ -96,6 +42,31 @@ static void usage(char *argv0) {
     exit(-1);
 }
 
+
+float ** initialise_clusters(float ** points,int n,int c ,int d)
+{
+	float **clusters;
+	int i,j;
+	
+	/*Storing clusters in transpose form */
+	clusters   = (float**)malloc(d * sizeof(float*));
+        assert(clusters != NULL);
+        int len= c*d;
+        clusters[0] = (float*) malloc(len * sizeof(float));
+        assert(clusters != NULL);
+        for (i=1; i<d; i++)
+            clusters[i] = clusters[i-1] + c;
+         
+        for(i=0;i<c;i++)
+	{
+		for(j=0;j<d;j++)
+		{
+			clusters[j][i]=points[i][j];
+		}
+	}
+	return clusters;
+
+}
 int main(int argc, char *argv[])
 {
 	/*
@@ -121,41 +92,22 @@ int main(int argc, char *argv[])
                  		exit(EXIT_FAILURE);
         		}
     		}
-    	input = fopen(input_file,"r");
 	
-	float * point =(float*)(malloc)(sizeof(float) *n*d);
-	float * cluster=(float*)(malloc)(sizeof(float)*c*d);
+        /*Input points*/
+	float ** points =input_points(input_file,n,d);
+	/*Initialise clusters*/
+	float ** clusters=initialise_clusters(points,n,c,d);
+	
+	/*Initialise membership*/
 	int * member=(int*)(malloc)(sizeof(int)*n);
-	
-	
 	int i,j;
 	for(i=0;i<n;i++)
-	{
-		for(j=0;j<d;j++)
-		{
-			fscanf(input,"%f",&point[i*d+j]);
-			
-		}
-		member[i]=0;
-	}
-	
-	fclose(input);
-	
-	/*Random initialisation using the first k points */
-	for(i=0;i<c;i++)
-	{
-		for(j=0;j<d;j++)
-		{
-			cluster[i*d+j]=point[i*d+j];
-		}
-		
-	}
+		member[i]=-1;
 	
 	clock_t clustering_timing=clock();
-	kmeans_cpu(point,cluster,member);
+	kmeans_cpu(points,clusters,member,n,c,d);
 	clustering_timing=clock()-clustering_timing;
 	double time=(double)clustering_timing/CLOCKS_PER_SEC;
-	print_clusters(cluster);
+	print_clusters(clusters);
 	printf("Time taken for clustering = %f sec\n",time);
 }
-

@@ -65,6 +65,7 @@ __global__ void kmeans_gpu(float *point,float *cluster,int *member ,int *d_n,int
 		{
 			for(k=0;k<d;k++)
 			{
+				if(newClusterSize[i]>0)
 				cluster[i*d+k]=newCluster[i*d+k]/newClusterSize[i];
 				newCluster[i*d+k]=0;
 			}
